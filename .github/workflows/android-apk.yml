@@ -13,17 +13,6 @@ on:
       - 'android/**'
       - 'scripts/**'
       - '.github/workflows/android-apk.yml'
-  pull_request:
-    paths:
-      - '**.html'
-      - '**.css'
-      - '**.js'
-      - '**.cjs'
-      - '**.webmanifest'
-      - 'icons/**'
-      - 'android/**'
-      - 'scripts/**'
-      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,7 +20,7 @@ permissions:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
