@@ -25,7 +25,7 @@
 运行网页不需要 npm 或第三方服务：
 
 ```sh
-git clone https://github.com/helloworld-x3/xiangqi.git
+git clone --branch app/android-v2 https://github.com/helloworld-x3/xiangqi.git
 cd xiangqi
 python3 -m http.server 8080
 ```
