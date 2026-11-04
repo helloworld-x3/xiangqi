@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">中国象棋</string>
+    <string name="exit_title">退出象棋？</string>
+    <string name="exit_message">棋局会自动保存在这台设备，下次打开可以继续。</string>
+    <string name="exit_confirm">退出</string>
+    <string name="exit_cancel">继续对弈</string>
+</resources>

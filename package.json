@@ -1,0 +1,13 @@
+{
+  "name": "xiangqi-app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Offline local two-player Xiangqi for Android and browsers",
+  "scripts": {
+    "test": "node test.cjs && node tests/app.test.cjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

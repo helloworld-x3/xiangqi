@@ -1,0 +1,93 @@
+name: Android APK
+
+on:
+  push:
+    paths:
+      - '**.html'
+      - '**.css'
+      - '**.js'
+      - '**.cjs'
+      - '**.webmanifest'
+      - 'package.json'
+      - 'icons/**'
+      - 'android/**'
+      - 'scripts/**'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    paths:
+      - '**.html'
+      - '**.css'
+      - '**.js'
+      - '**.cjs'
+      - '**.webmanifest'
+      - 'icons/**'
+      - 'android/**'
+      - 'scripts/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Xiangqi rules and app state
+        run: |
+          node test.cjs
+          node tests/app.test.cjs
+          node --check app.js
+          node --check persistence.js
+      - name: Install browser test dependency
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify mobile and desktop UI
+        run: npm run test:browser
+      - name: Upload interface screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiangqi-interface
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build and lint installable debug APK
+        run: gradle --no-daemon -p android assembleDebug lintDebug
+      - name: Name APK and record checksum
+        run: |
+          mkdir -p apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk/xiangqi-2.0.0-debug.apk
+          cd apk
+          sha256sum xiangqi-2.0.0-debug.apk > SHA256SUMS.txt
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiangqi-android-apk
+          path: apk/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint-report
+          path: android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+          retention-days: 14
