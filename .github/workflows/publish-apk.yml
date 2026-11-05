@@ -1,0 +1,57 @@
+name: Direct APK download
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch verified APK without rebuilding or changing signature
+        uses: actions/download-artifact@v4
+        with:
+          name: xiangqi-android-apk
+          run-id: 41868388839
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: apk
+      - name: Verify APK integrity
+        working-directory: apk
+        run: |
+          sha256sum -c SHA256SUMS.txt
+          test -s xiangqi-2.0.0-debug.apk
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v2.0.0-android-test
+          cat > release-notes.md <<'NOTES'
+          # 中国象棋 Android 测试版
+          下载下方 xiangqi-2.0.0-debug.apk，直接在安卓手机上打开安装，无需解压 ZIP。
+          支持 Android 8.0 及以上。按系统提示允许当前浏览器安装应用。
+          
+          中文手机界面、离线同屏双人、自动续局、悔棋、翻转棋盘、面对面模式、走子提示和音效开关。
+          
+          使用已成功构建的同一份 APK，不重新签名。27 项规则/应用测试、Chromium 浏览器测试、Android 编译与 Lint 已通过。
+          原始构建：https://github.com/helloworld-x3/xiangqi/actions/runs/41868388839
+          
+          当前为 debug 签名测试版，尚未进行真机安装验收。清理应用数据或卸载会删除本地棋局；遇到更新签名不兼容时请先保留原应用。
+          NOTES
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target 32e9ecdc14d9a2187b828f8db2fbeecc33b81157 --draft --prerelease --title "中国象棋 Android 2.0 测试版" --notes-file release-notes.md
+          fi
+          assets="$(gh release view "$tag" --json assets --jq '.assets[].name')"
+          for file in xiangqi-2.0.0-debug.apk SHA256SUMS.txt; do
+            if ! printf '%s\n' "$assets" | grep -Fxq "$file"; then
+              gh release upload "$tag" "apk/$file"
+            fi
+          done
+          gh release edit "$tag" --draft=false --prerelease
+          gh release view "$tag" --json url,assets

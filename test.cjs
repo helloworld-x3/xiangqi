@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const html=fs.readFileSync(__dirname+'/index.html','utf8');const src=html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1];const ctx={};vm.createContext(ctx);vm.runInContext(src+';globalThis.X=Xiangqi',ctx);const X=ctx.X;let count=0;function test(name,fn){fn();count++;console.log('PASS',name)}const idx=(x,y)=>y*9+x;function position(pieces){const b=Array(90).fill(null);for(const [x,y,s,t]of pieces)b[idx(x,y)]={s,t};return b;}const kings=[[4,0,'b','K'],[4,9,'r','K'],[4,5,'r','P']];
+const X=require('./engine.js');let count=0;function test(name,fn){fn();count++;console.log('PASS',name)}const idx=(x,y)=>y*9+x;function position(pieces){const b=Array(90).fill(null);for(const [x,y,s,t]of pieces)b[idx(x,y)]={s,t};return b;}const kings=[[4,0,'b','K'],[4,9,'r','K'],[4,5,'r','P']];
 test('Initial setup and 44 opening legal moves',()=>{const b=X.initial();assert.equal(b.filter(Boolean).length,32);assert.equal(b.reduce((n,p,i)=>n+(p?.s==='r'?X.legal(b,i).length:0),0),44);assert.equal(X.check(b,'r'),false);});
 test('General and advisor palace boundaries',()=>{let b=position(kings);assert(X.pseudo(b,85,84));assert(!X.pseudo(b,85,76-9*2));b[84]={s:'r',t:'A'};assert(X.pseudo(b,84,76));assert(!X.pseudo(b,84,74));});
 test('Horse leg blocks both jump directions',()=>{const b=position([...kings,[1,9,'r','H']]);assert(X.pseudo(b,82,63));b[73]={s:'r',t:'P'};assert(!X.pseudo(b,82,63));assert(X.pseudo(b,82,75));b[83]={s:'r',t:'P'};assert(!X.pseudo(b,82,75));});
@@ -11,5 +11,9 @@ test('Check must be resolved; generals cannot be captured',()=>{const b=position
 test('Stalemate is a loss',()=>{const b=position([[4,0,'b','K'],[3,2,'r','R'],[5,2,'r','R'],[4,2,'r','P'],[4,9,'r','K']]);const s=X.state(b,'b');assert(!s.checked);assert(s.over);assert.equal(s.reason,'Stalemate');assert.equal(s.winner,'r');});
 test('Checkmate is a loss',()=>{const b=position([[4,0,'b','K'],[3,2,'r','R'],[5,2,'r','R'],[4,1,'r','R'],[4,9,'r','K']]);const s=X.state(b,'b');assert(s.checked);assert(s.over);assert.equal(s.reason,'Checkmate');});
 test('Every legal move in a 100-ply playout preserves own general',()=>{let b=X.initial(),s='r';let seed=42;for(let n=0;n<100;n++){const moves=[];b.forEach((p,i)=>{if(p?.s===s)X.legal(b,i).forEach(z=>moves.push([i,z]));});if(!moves.length)break;seed=(seed*1664525+1013904223)>>>0;const [a,z]=moves[seed%moves.length];const before=b.slice();b=X.apply(b,a,z);assert(!X.check(b,s));assert.equal(before[a]?.s,s);assert(b.some(p=>p?.s===X.other(s)&&p.t==='K'));s=X.other(s);}});
-for(const [,js]of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(js);
-console.log(`${count} rule tests passed; both scripts parse.`);
+test('Standard opening perft depth 2 and 3',()=>{function perft(b,s,d){if(!d)return 1;let n=0;b.forEach((p,i)=>{if(p?.s===s)for(const z of X.legal(b,i))n+=perft(X.apply(b,i,z),X.other(s),d-1);});return n;}assert.equal(perft(X.initial(),'r',2),1920);assert.equal(perft(X.initial(),'r',3),79666);});
+test('Cannon screen cannot be inserted to expose own general',()=>{const b=position([[4,9,'r','K'],[3,0,'b','K'],[0,9,'b','C'],[2,8,'r','R']]);assert(X.pseudo(b,74,83));assert(!X.legal(b,74).includes(83));});
+test('Removing a cannon screen can resolve check',()=>{const b=position([[4,9,'r','K'],[3,0,'b','K'],[0,9,'b','C'],[2,9,'r','R']]);assert(X.check(b,'r'));assert(X.legal(b,83).includes(74));});
+test('Black elephant cannot cross river',()=>{const b=position([[2,4,'b','E']]);assert(!X.pseudo(b,38,58));assert(X.pseudo(b,38,18));});
+for(const file of ['engine.js','persistence.js','app.js'])new vm.Script(fs.readFileSync(__dirname+'/'+file,'utf8'));
+console.log(`${count} rule tests passed; application scripts parse.`);
